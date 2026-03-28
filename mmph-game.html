@@ -725,6 +725,59 @@ body {
 .lb-date { font-size: 11px; color: #ccc; min-width: 56px; text-align: right; }
 .lb-empty { text-align: center; font-size: 13px; color: #ccc; font-style: italic; padding: 6px 0; }
 
+/* ─── MIC TOGGLE ─────────────────────────────────────────── */
+.mic-toggle-btn {
+  width: 100%;
+  background: #f8f8f8;
+  color: #aaa;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 14px;
+  padding: 9px 12px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.mic-toggle-btn.active {
+  background: #f0fff5;
+  border: 2px solid var(--accent-green);
+  color: var(--ink);
+  animation: mic-pulse 2s ease-in-out infinite;
+}
+.mic-toggle-btn.unsupported {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,125,0.35); }
+  50%       { box-shadow: 0 0 0 8px rgba(76,175,125,0); }
+}
+
+/* ─── DETECTED WORD (in buzz overlay) ──────────────────────── */
+.detected-badge {
+  background: rgba(0,0,0,0.22);
+  border-radius: 12px;
+  padding: 6px 22px 10px;
+  margin-bottom: 12px;
+  display: inline-block;
+  animation: pop-in 0.25s cubic-bezier(0.34,1.56,0.64,1);
+}
+.detected-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+}
+.detected-word {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 36px;
+  color: white;
+  letter-spacing: 1px;
+}
+
 .new-record-badge {
   display: inline-block;
   background: var(--accent-yellow);
@@ -762,6 +815,12 @@ body {
 <div class="overlay" id="buzzOverlay">
   <div class="buzz-sound">🔔</div>
   <div class="buzz-title">MMPH!</div>
+  <div id="detectedWordWrap" style="display:none; text-align:center;">
+    <div class="detected-badge">
+      <div class="detected-label">🎤 Detected:</div>
+      <div class="detected-word" id="detectedWordText"></div>
+    </div>
+  </div>
   <div class="buzz-sub" id="buzzMsg">You said a forbidden word!</div>
   <button class="btn btn-reset" onclick="dismissBuzz()" style="font-size:18px; padding:12px 30px;">OK, continue →</button>
 </div>
@@ -910,6 +969,9 @@ body {
       </button>
 
       <div class="cards-left" id="cardsLeft"></div>
+      <button class="mic-toggle-btn" id="micToggleBtn" onclick="toggleMic()">
+        🎤 Auto-detect forbidden words (OFF)
+      </button>
     </div>
 
     <!-- ══════════════ TURN RESULT SCREEN ══════════════ -->
@@ -1586,6 +1648,7 @@ function startTurn() {
   updateRoundInfo();
   loadCard();
   startTimer();
+  if (micEnabled) startMicListening();
 }
 
 function loadCard() {
@@ -1638,12 +1701,20 @@ function skipCard() {
   loadCard();
 }
 
-function triggerBuzzer() {
+function triggerBuzzer(detectedWord) {
+  if (document.getElementById('buzzOverlay').classList.contains('show')) return;
   clearInterval(G.timer);
+  stopMicListening();
   soundBuzzer();
   const card = G.deck[G.cardIndex];
   document.getElementById('buzzMsg').textContent =
     `"${card.word}" — deduct 1 point from ${G.teamNames[G.currentTeam]}`;
+  if (detectedWord) {
+    document.getElementById('detectedWordText').textContent = detectedWord;
+    document.getElementById('detectedWordWrap').style.display = '';
+  } else {
+    document.getElementById('detectedWordWrap').style.display = 'none';
+  }
   document.getElementById('buzzOverlay').classList.add('show');
 }
 
@@ -1654,7 +1725,8 @@ function dismissBuzz() {
   document.getElementById('buzzOverlay').classList.remove('show');
   updateScoreboard();
   loadCard();
-  startTimer(); // Resume timer
+  startTimer();
+  if (micEnabled) startMicListening();
 }
 
 function flashCard(cls) {
@@ -1696,6 +1768,7 @@ function renderTimer() {
 }
 
 function endTurn() {
+  stopMicListening();
   showTurnResult();
 }
 
@@ -1888,6 +1961,108 @@ function escHtml(s) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+}
+
+// ─── SPEECH RECOGNITION ──────────────────────────────────────
+let micEnabled = false;
+let recog = null;
+let recogRunning = false;
+
+function buildRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = 'en-US';
+  r.maxAlternatives = 1;
+
+  r.onresult = function(e) {
+    if (!recogRunning) return;
+    if (document.getElementById('buzzOverlay').classList.contains('show')) return;
+    if (!G.deck || G.cardIndex >= G.deck.length) return;
+
+    let transcript = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    transcript = ' ' + transcript.toUpperCase().replace(/[^A-Z\s]/g, '') + ' ';
+
+    const card = G.deck[G.cardIndex];
+    const targets = [card.word, ...card.forbidden];
+    for (const w of targets) {
+      const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      if (new RegExp('\\b' + escaped + '\\b').test(transcript)) {
+        recogRunning = false; // prevent double-fire
+        triggerBuzzer(w);
+        return;
+      }
+    }
+  };
+
+  r.onend = function() {
+    if (micEnabled && recogRunning) {
+      setTimeout(function() { try { r.start(); } catch(e) {} }, 150);
+    }
+  };
+
+  r.onerror = function(e) {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      micEnabled = false;
+      recogRunning = false;
+      updateMicUI();
+      alert('Microphone access was denied. Please allow microphone access in your browser and try again.');
+    }
+  };
+
+  return r;
+}
+
+function toggleMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert('Speech recognition is not supported in this browser.\nPlease use Chrome or Edge.');
+    return;
+  }
+  micEnabled = !micEnabled;
+  if (micEnabled) {
+    startMicListening();
+  } else {
+    stopMicListening();
+  }
+  updateMicUI();
+}
+
+function startMicListening() {
+  if (!micEnabled) return;
+  if (!recog) recog = buildRecognition();
+  if (!recog) return;
+  if (recogRunning) return;
+  recogRunning = true;
+  try { recog.start(); } catch(e) {}
+}
+
+function stopMicListening() {
+  recogRunning = false;
+  if (recog) try { recog.abort(); } catch(e) {}
+}
+
+function updateMicUI() {
+  const btn = document.getElementById('micToggleBtn');
+  if (!btn) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    btn.textContent = '🎤 Auto-detect (not supported in this browser)';
+    btn.classList.add('unsupported');
+    return;
+  }
+  if (micEnabled) {
+    btn.textContent = '🎤 Auto-detect ON — listening for forbidden words...';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '🎤 Auto-detect forbidden words (OFF)';
+    btn.classList.remove('active');
+  }
 }
 
 // ─── AUDIO ───────────────────────────────────────────────────
