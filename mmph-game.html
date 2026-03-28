@@ -1964,21 +1964,25 @@ function showScreen(id) {
 }
 
 // ─── SPEECH RECOGNITION ──────────────────────────────────────
-let micEnabled = false;
-let recog = null;
-let recogRunning = false;
+// Strategy: once started, keep recognition alive the whole session.
+// Never call abort() — only use a flag to pause/resume processing.
+// This avoids repeated permission prompts on file:// pages.
+let micEnabled  = false; // user has toggled mic on
+let micActive   = false; // currently processing results (not paused)
+let recog       = null;
+let recogAlive  = false; // recognition.start() has been called
 
 function buildRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
   const r = new SR();
-  r.continuous = true;
-  r.interimResults = true;
-  r.lang = 'en-US';
+  r.continuous      = true;
+  r.interimResults  = true;
+  r.lang            = 'en-US';
   r.maxAlternatives = 1;
 
   r.onresult = function(e) {
-    if (!recogRunning) return;
+    if (!micActive) return;
     if (document.getElementById('buzzOverlay').classList.contains('show')) return;
     if (!G.deck || G.cardIndex >= G.deck.length) return;
 
@@ -1993,26 +1997,33 @@ function buildRecognition() {
     for (const w of targets) {
       const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
       if (new RegExp('\\b' + escaped + '\\b').test(transcript)) {
-        recogRunning = false; // prevent double-fire
+        micActive = false; // pause to prevent double-fire
         triggerBuzzer(w);
         return;
       }
     }
   };
 
+  // Recognition ends on its own after silence — restart seamlessly
   r.onend = function() {
-    if (micEnabled && recogRunning) {
-      setTimeout(function() { try { r.start(); } catch(e) {} }, 150);
+    if (micEnabled) {
+      setTimeout(function() {
+        try { r.start(); } catch(ex) {}
+      }, 100);
+    } else {
+      recogAlive = false;
     }
   };
 
   r.onerror = function(e) {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       micEnabled = false;
-      recogRunning = false;
+      micActive  = false;
+      recogAlive = false;
       updateMicUI();
-      alert('Microphone access was denied. Please allow microphone access in your browser and try again.');
+      alert('Microphone access denied.\nPlease click the camera/mic icon in the address bar and set microphone to "Always allow".');
     }
+    // Other errors (network, aborted): onend will handle restart
   };
 
   return r;
@@ -2026,25 +2037,27 @@ function toggleMic() {
   }
   micEnabled = !micEnabled;
   if (micEnabled) {
-    startMicListening();
+    if (!recog) recog = buildRecognition();
+    if (!recogAlive) {
+      recogAlive = true;
+      try { recog.start(); } catch(e) {}
+    }
+    micActive = true;
   } else {
-    stopMicListening();
+    micActive = false;
+    // Let onend stop the cycle naturally by leaving micEnabled = false
   }
   updateMicUI();
 }
 
+// Called at start of each turn — resume processing if mic is on
 function startMicListening() {
-  if (!micEnabled) return;
-  if (!recog) recog = buildRecognition();
-  if (!recog) return;
-  if (recogRunning) return;
-  recogRunning = true;
-  try { recog.start(); } catch(e) {}
+  if (micEnabled) micActive = true;
 }
 
+// Called at turn end / buzz — pause processing but keep recog alive
 function stopMicListening() {
-  recogRunning = false;
-  if (recog) try { recog.abort(); } catch(e) {}
+  micActive = false;
 }
 
 function updateMicUI() {
@@ -2052,7 +2065,7 @@ function updateMicUI() {
   if (!btn) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    btn.textContent = '🎤 Auto-detect (not supported in this browser)';
+    btn.textContent = '🎤 Auto-detect (not supported — use Chrome/Edge)';
     btn.classList.add('unsupported');
     return;
   }
