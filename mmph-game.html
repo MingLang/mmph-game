@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mmph! — The Wimpy Kid Word Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Permanent+Marker&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #1a1a2e;
+  --paper: #fdf8f0;
+  --lined: #e8f4fd;
+  --rule-blue: #aed3ee;
+  --margin-red: #e05c5c;
+  --accent-yellow: #ffd447;
+  --accent-green: #4caf7d;
+  --accent-red: #e05c5c;
+  --accent-blue: #4a90d9;
+  --shadow: rgba(0,0,0,0.15);
+  --buzzer-red: #c0392b;
+  --forbidden-bg: #fff0f0;
+  --card-shadow: 3px 5px 18px rgba(0,0,0,0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Patrick Hand', cursive;
+  background: #d4e9f7;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(255,212,71,0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(224,92,92,0.1) 0%, transparent 40%);
+}
+
+/* ─── NOTEBOOK WRAPPER ──────────────────────────────────────── */
+.notebook {
+  width: 100%;
+  max-width: 560px;
+  background: var(--paper);
+  border-radius: 4px 14px 14px 4px;
+  box-shadow:
+    -8px 0 0 #c7b89a,
+    -14px 0 0 #b5a688,
+    0 8px 32px rgba(0,0,0,0.22),
+    inset 0 0 0 1px rgba(0,0,0,0.04);
+  position: relative;
+  overflow: hidden;
+  min-height: 580px;
+}
+
+/* Spiral holes */
+.notebook::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 0; bottom: 0;
+  width: 12px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 28px,
+    #b5a688 28px,
+    #b5a688 30px,
+    transparent 30px,
+    transparent 58px
+  );
+  z-index: 20;
+}
+
+/* Ruled lines */
+.notebook-inner {
+  padding: 20px 28px 32px 40px;
+  background-image:
+    repeating-linear-gradient(
+      transparent 0px,
+      transparent 33px,
+      var(--rule-blue) 33px,
+      var(--rule-blue) 34px
+    );
+  background-position: 0 52px;
+  min-height: 580px;
+  position: relative;
+}
+
+/* Red margin line */
+.notebook-inner::before {
+  content: '';
+  position: absolute;
+  left: 68px;
+  top: 0; bottom: 0;
+  width: 1.5px;
+  background: var(--margin-red);
+  opacity: 0.5;
+}
+
+/* ─── SCREENS ──────────────────────────────────────────────── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ─── HEADER ────────────────────────────────────────────────── */
+.game-header {
+  text-align: center;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+.title-main {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 72px;
+  color: var(--ink);
+  line-height: 0.9;
+  letter-spacing: -2px;
+  position: relative;
+  display: inline-block;
+  transform: rotate(-1.5deg);
+}
+
+.title-main::after {
+  content: '!';
+  color: var(--accent-red);
+}
+
+.title-sub {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 13px;
+  color: #888;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.doodle-stars {
+  position: absolute;
+  font-size: 18px;
+  opacity: 0.4;
+}
+.star-left { left: 20px; top: 8px; transform: rotate(-15deg); }
+.star-right { right: 20px; top: 12px; transform: rotate(10deg); }
+
+/* ─── BUTTONS ──────────────────────────────────────────────── */
+.btn {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 18px;
+  padding: 10px 26px;
+  border-radius: 8px;
+  border: 2.5px solid var(--ink);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: 3px 3px 0 var(--ink);
+  position: relative;
+  letter-spacing: 0.3px;
+}
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn-big {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 22px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  letter-spacing: 1px;
+}
+
+.btn-start { background: var(--accent-yellow); color: var(--ink); }
+.btn-correct { background: var(--accent-green); color: white; }
+.btn-skip { background: var(--accent-blue); color: white; }
+.btn-reset { background: #eee; color: var(--ink); }
+.btn-next { background: var(--accent-yellow); color: var(--ink); }
+.btn-play-again { background: var(--accent-green); color: white; }
+
+/* ─── SETUP SCREEN ─────────────────────────────────────────── */
+.setup-label {
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.setup-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.setup-row label {
+  font-size: 15px;
+  color: var(--ink);
+  min-width: 130px;
+  font-style: italic;
+}
+
+.setup-row input, .setup-row select {
+  flex: 1;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 16px;
+  padding: 7px 10px;
+  border: 2px solid var(--rule-blue);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.setup-row input:focus, .setup-row select:focus {
+  border-color: var(--accent-blue);
+}
+
+.team-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.team-input-group label {
+  font-size: 13px;
+  color: #888;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.team-input-group input {
+  width: 100%;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 16px;
+  padding: 8px 10px;
+  border: 2px solid var(--rule-blue);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  outline: none;
+}
+.team-input-group:first-child input { border-color: #ff9b9b; }
+.team-input-group:last-child input { border-color: #9bc4ff; }
+
+/* ─── SCOREBOARD ───────────────────────────────────────────── */
+.scoreboard {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.score-card {
+  flex: 1;
+  text-align: center;
+  padding: 10px 8px 8px;
+  border-radius: 10px;
+  border: 2px solid currentColor;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.score-card.team-a { border-color: var(--margin-red); background: #fff5f5; color: var(--margin-red); }
+.score-card.team-b { border-color: var(--accent-blue); background: #f0f7ff; color: var(--accent-blue); }
+.score-card.active-turn {
+  transform: scale(1.04);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.score-card.active-turn::before {
+  content: '▼ clue-giver';
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.score-team-name {
+  font-family: 'Special Elite', cursive;
+  font-size: 13px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.score-number {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.round-info {
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+/* ─── TIMER ─────────────────────────────────────────────────── */
+.timer-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.timer-circle {
+  width: 72px;
+  height: 72px;
+  position: relative;
+}
+
+.timer-svg {
+  width: 72px;
+  height: 72px;
+  transform: rotate(-90deg);
+}
+
+.timer-track { fill: none; stroke: #e8e8e8; stroke-width: 6; }
+.timer-arc {
+  fill: none;
+  stroke: var(--accent-green);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 188.4;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke 0.3s;
+}
+
+.timer-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Permanent Marker', cursive;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+/* ─── WORD CARD ─────────────────────────────────────────────── */
+.word-card {
+  background: white;
+  border: 2.5px solid var(--ink);
+  border-radius: 12px;
+  padding: 18px 18px 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top color bar */
+.word-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent-red) 0%, var(--accent-red) 20%,
+    var(--accent-yellow) 20%, var(--accent-yellow) 40%,
+    var(--accent-green) 40%, var(--accent-green) 60%,
+    var(--accent-blue) 60%, var(--accent-blue) 80%,
+    var(--ink) 80%, var(--ink) 100%
+  );
+}
+
+.card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #aaa;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.secret-word {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 52px;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 14px;
+  letter-spacing: 0px;
+  text-transform: uppercase;
+}
+
+.forbidden-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--accent-red);
+  margin-bottom: 8px;
+  font-family: 'Special Elite', cursive;
+}
+.forbidden-label::before, .forbidden-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+.forbidden-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+}
+
+.forbidden-chip {
+  font-family: 'Special Elite', cursive;
+  font-size: 15px;
+  padding: 5px 12px;
+  background: var(--forbidden-bg);
+  border: 2px solid var(--accent-red);
+  border-radius: 20px;
+  color: var(--accent-red);
+  letter-spacing: 0.5px;
+  text-decoration: line-through;
+  text-decoration-color: rgba(224,92,92,0.4);
+  position: relative;
+}
+
+/* No icon per chip — keep clean */
+
+/* ─── ACTION BUTTONS ────────────────────────────────────────── */
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ─── BUZZER ─────────────────────────────────────────────────── */
+.buzzer-btn {
+  width: 100%;
+  background: var(--buzzer-red);
+  color: white;
+  border: 2.5px solid var(--ink);
+  border-radius: 50px;
+  font-family: 'Permanent Marker', cursive;
+  font-size: 20px;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #8b1a1a, 3px 8px 0 rgba(0,0,0,0.3);
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.buzzer-btn:hover { filter: brightness(1.08); }
+.buzzer-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #8b1a1a, 1px 2px 0 rgba(0,0,0,0.3);
+}
+.buzzer-btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 2.5s infinite;
+}
+@keyframes shimmer { 0% { left: -60%; } 100% { left: 130%; } }
+
+/* ─── CARDS LEFT COUNTER ─────────────────────────────────────── */
+.cards-left {
+  text-align: center;
+  font-size: 12px;
+  color: #bbb;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ─── BUZZ OVERLAY ──────────────────────────────────────────── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(192,57,43,0.93);
+  z-index: 100;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+}
+.overlay.show { display: flex; }
+
+.buzz-title {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 80px;
+  color: white;
+  line-height: 1;
+  animation: buzz-shake 0.35s ease;
+  margin-bottom: 10px;
+}
+@keyframes buzz-shake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-5deg) scale(1.1); }
+  40% { transform: rotate(5deg) scale(1.1); }
+  60% { transform: rotate(-3deg); }
+  80% { transform: rotate(3deg); }
+}
+
+.buzz-sub {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 22px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 28px;
+}
+
+.buzz-sound {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes pulse { from { transform: scale(0.9); } to { transform: scale(1.1); } }
+
+/* ─── TURN END SCREEN ───────────────────────────────────────── */
+.turn-result {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.turn-result-title {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 30px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.turn-score-summary {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 16px 0;
+}
+
+.turn-score-item {
+  text-align: center;
+}
+
+.turn-score-icon { font-size: 26px; }
+.turn-score-count {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 36px;
+  color: var(--ink);
+}
+.turn-score-label {
+  font-size: 11px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ─── FINAL SCREEN ──────────────────────────────────────────── */
+.trophy-area {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.trophy-emoji { font-size: 80px; display: block; margin-bottom: 4px; }
+
+.winner-name {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 34px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.winner-sub {
+  font-size: 15px;
+  color: #888;
+  font-style: italic;
+}
+
+.final-scores {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.final-score-box {
+  flex: 1;
+  text-align: center;
+  padding: 14px 10px;
+  border-radius: 10px;
+  border: 2.5px solid currentColor;
+}
+
+.final-score-box.team-a { color: var(--margin-red); background: #fff5f5; }
+.final-score-box.team-b { color: var(--accent-blue); background: #f0f7ff; }
+.final-score-box .team-name { font-size: 14px; opacity: 0.7; font-family: 'Special Elite'; }
+.final-score-box .big-num {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 56px;
+  line-height: 1;
+}
+
+/* ─── ANIMATIONS ────────────────────────────────────────────── */
+@keyframes pop-in {
+  from { transform: scale(0.7) rotate(-4deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.pop-in { animation: pop-in 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+@keyframes card-flip {
+  0%   { transform: rotateY(90deg) scale(0.9); opacity: 0; }
+  100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+}
+.card-flip { animation: card-flip 0.25s ease-out; }
+
+/* feedback flash */
+.correct-flash { animation: flash-green 0.4s ease; }
+.skip-flash { animation: flash-blue 0.4s ease; }
+
+@keyframes flash-green {
+  0%, 100% { background: white; }
+  30% { background: #e8f8f0; }
+}
+@keyframes flash-blue {
+  0%, 100% { background: white; }
+  30% { background: #eaf3ff; }
+}
+
+/* ─── DIVIDER DOODLE ─────────────────────────────────────────── */
+.doodle-divider {
+  text-align: center;
+  color: #ccc;
+  font-size: 12px;
+  letter-spacing: 4px;
+  margin: 12px 0;
+  font-family: monospace;
+}
+
+/* ─── MISC ──────────────────────────────────────────────────── */
+.centered { text-align: center; }
+.mt8 { margin-top: 8px; }
+.mt16 { margin-top: 16px; }
+.italic-note { font-size: 12px; color: #bbb; font-style: italic; text-align: center; margin-top: 8px; }
+
+/* ─── MODE TOGGLE ─────────────────────────────────────────── */
+.mode-toggle {
+  display: flex;
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.mode-toggle input[type=radio] { display: none; }
+.mode-toggle label {
+  flex: 1;
+  text-align: center;
+  padding: 9px 8px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
+  border: none;
+  background: white;
+  color: #888;
+}
+.mode-toggle label:first-of-type { border-right: 1.5px solid var(--ink); }
+.mode-toggle input:checked + label {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ─── LEADERBOARD ─────────────────────────────────────────── */
+.leaderboard {
+  margin-top: 14px;
+  border: 2px dashed var(--rule-blue);
+  border-radius: 10px;
+  padding: 10px 12px 8px;
+  background: rgba(174,211,238,0.08);
+}
+.leaderboard-title {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 17px;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 8px;
+  opacity: 0.75;
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 14px;
+}
+.lb-row:nth-child(even) { background: rgba(0,0,0,0.03); }
+.lb-rank {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 15px;
+  min-width: 22px;
+  color: #ccc;
+  text-align: center;
+}
+.lb-rank.gold   { color: #f5a623; }
+.lb-rank.silver { color: #aaa; }
+.lb-rank.bronze { color: #c97b3b; }
+.lb-name { flex: 1; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-score {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 22px;
+  color: var(--ink);
+  min-width: 36px;
+  text-align: right;
+}
+.lb-date { font-size: 11px; color: #ccc; min-width: 56px; text-align: right; }
+.lb-empty { text-align: center; font-size: 13px; color: #ccc; font-style: italic; padding: 6px 0; }
+
+.new-record-badge {
+  display: inline-block;
+  background: var(--accent-yellow);
+  border: 2.5px solid var(--ink);
+  border-radius: 20px;
+  padding: 4px 18px;
+  font-family: 'Permanent Marker', cursive;
+  font-size: 20px;
+  color: var(--ink);
+  margin-bottom: 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  animation: pop-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.solo-final-score {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 86px;
+  color: var(--ink);
+  line-height: 1;
+  text-align: center;
+}
+.solo-final-label {
+  font-size: 13px;
+  color: #aaa;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+</style>
+</head>
+<body>
+
+<!-- BUZZER OVERLAY -->
+<div class="overlay" id="buzzOverlay">
+  <div class="buzz-sound">🔔</div>
+  <div class="buzz-title">MMPH!</div>
+  <div class="buzz-sub" id="buzzMsg">You said a forbidden word!</div>
+  <button class="btn btn-reset" onclick="dismissBuzz()" style="font-size:18px; padding:12px 30px;">OK, continue →</button>
+</div>
+
+<div class="notebook">
+  <div class="notebook-inner">
+
+    <!-- ══════════════ SETUP SCREEN ══════════════ -->
+    <div class="screen active" id="screen-setup">
+      <div class="game-header">
+        <span class="doodle-stars star-left">✦✦</span>
+        <div class="title-main">Mmph</div>
+        <div class="title-sub">from Diary of a Wimpy Kid: Hot Mess</div>
+        <span class="doodle-stars star-right">✦</span>
+      </div>
+
+      <p class="setup-label">Describe the secret word without saying any forbidden words — or Rodrick hits the buzzer on you!</p>
+
+      <div class="doodle-divider">— — — — — — — — — —</div>
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle">
+        <input type="radio" name="gameMode" id="modeVersus" value="versus" checked onchange="updateModeUI()">
+        <label for="modeVersus">⚔️ Versus (2 teams)</label>
+        <input type="radio" name="gameMode" id="modeSolo" value="solo" onchange="updateModeUI()">
+        <label for="modeSolo">🎯 Solo challenge</label>
+      </div>
+
+      <!-- Versus: two team name inputs -->
+      <div class="team-inputs" id="teamInputsVersus">
+        <div class="team-input-group">
+          <label>🔴 Team A name</label>
+          <input type="text" id="teamAName" value="Team Heffley" maxlength="14">
+        </div>
+        <div class="team-input-group">
+          <label>🔵 Team B name</label>
+          <input type="text" id="teamBName" value="Team Rowley" maxlength="14">
+        </div>
+      </div>
+
+      <!-- Solo: single player name -->
+      <div class="setup-row" id="teamInputsSolo" style="display:none">
+        <label>🙋 Your name</label>
+        <input type="text" id="soloPlayerName" value="Greg" maxlength="14"
+          style="font-family:'Patrick Hand',cursive;font-size:16px;padding:7px 10px;border:2px solid var(--rule-blue);border-radius:6px;background:white;color:var(--ink);outline:none;flex:1;">
+      </div>
+
+      <div class="setup-row">
+        <label>⏱ Seconds / turn</label>
+        <select id="turnDuration">
+          <option value="30">30 seconds</option>
+          <option value="45">45 seconds</option>
+          <option value="60" selected>60 seconds</option>
+          <option value="90">90 seconds</option>
+          <option value="120">2 minutes</option>
+        </select>
+      </div>
+
+      <div class="setup-row" id="totalRoundsRow">
+        <label id="roundsLabel">🔄 Rounds</label>
+        <select id="totalRounds">
+          <option value="2">2 rounds</option>
+          <option value="3" selected>3 rounds</option>
+          <option value="5">5 rounds</option>
+          <option value="7">7 rounds</option>
+        </select>
+      </div>
+
+      <div class="setup-row">
+        <label>🃏 Category</label>
+        <select id="category">
+          <option value="all" selected>All categories</option>
+          <option value="animals">Animals 🐾</option>
+          <option value="food">Food 🍕</option>
+          <option value="school">School 🏫</option>
+          <option value="everyday">Everyday life</option>
+        </select>
+      </div>
+
+      <button class="btn btn-start btn-big" onclick="startGame()">▶ Start the Game!</button>
+      <p class="italic-note" id="setupNote">2 teams · pass the device between turns</p>
+
+      <!-- Leaderboard (solo) -->
+      <div class="leaderboard" id="setupLeaderboard" style="display:none">
+        <div class="leaderboard-title">🏅 Best Scores</div>
+        <div id="lbSetupRows"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ PLAY SCREEN ══════════════ -->
+    <div class="screen" id="screen-play">
+
+      <!-- Scoreboard -->
+      <div class="scoreboard" id="scoreboard">
+        <div class="score-card team-a" id="scoreCardA">
+          <div class="score-team-name" id="scoreNameA">Team A</div>
+          <div class="score-number" id="scoreNumA">0</div>
+        </div>
+        <div class="score-card team-b" id="scoreCardB">
+          <div class="score-team-name" id="scoreNameB">Team B</div>
+          <div class="score-number" id="scoreNumB">0</div>
+        </div>
+      </div>
+      <!-- Solo score display -->
+      <div id="soloScoreWrap" style="display:none; text-align:center; margin-bottom:10px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#aaa;margin-bottom:2px;">Score</div>
+        <div class="score-number" id="soloScoreNum" style="font-family:'Permanent Marker',cursive;font-size:48px;color:var(--ink);">0</div>
+      </div>
+
+      <div class="round-info" id="roundInfo">Round 1 of 3</div>
+
+      <!-- Timer -->
+      <div class="timer-wrap">
+        <div class="timer-circle">
+          <svg class="timer-svg" viewBox="0 0 60 60">
+            <circle class="timer-track" cx="30" cy="30" r="26"/>
+            <circle class="timer-arc" id="timerArc" cx="30" cy="30" r="26"/>
+          </svg>
+          <div class="timer-num" id="timerNum">60</div>
+        </div>
+      </div>
+
+      <!-- Word card -->
+      <div class="word-card" id="wordCard">
+        <div class="card-label">🔒 SECRET WORD</div>
+        <div class="secret-word" id="secretWord">PIZZA</div>
+        <div class="forbidden-label">⛔ Do NOT say</div>
+        <div class="forbidden-words" id="forbiddenWords"></div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-row">
+        <button class="btn btn-correct" onclick="markCorrect()">✔ Got it! +1</button>
+        <button class="btn btn-skip" onclick="skipCard()">⏭ Skip</button>
+      </div>
+
+      <!-- BUZZER -->
+      <button class="buzzer-btn" id="buzzerBtn" onclick="triggerBuzzer()">
+        🔔 BUZZER — Said forbidden word! (−1)
+      </button>
+
+      <div class="cards-left" id="cardsLeft"></div>
+    </div>
+
+    <!-- ══════════════ TURN RESULT SCREEN ══════════════ -->
+    <div class="screen" id="screen-turnresult">
+      <div class="game-header">
+        <div class="title-main" style="font-size:48px">Time!</div>
+      </div>
+      <div class="turn-result">
+        <div class="turn-result-title" id="turnResultTeam">Team Heffley's turn</div>
+        <div class="turn-score-summary">
+          <div class="turn-score-item">
+            <div class="turn-score-icon">✅</div>
+            <div class="turn-score-count" id="trCorrect">0</div>
+            <div class="turn-score-label">Correct</div>
+          </div>
+          <div class="turn-score-item">
+            <div class="turn-score-icon">⏭</div>
+            <div class="turn-score-count" id="trSkipped">0</div>
+            <div class="turn-score-label">Skipped</div>
+          </div>
+          <div class="turn-score-item">
+            <div class="turn-score-icon">🔔</div>
+            <div class="turn-score-count" id="trBuzzed">0</div>
+            <div class="turn-score-label">Buzzed</div>
+          </div>
+        </div>
+        <div class="doodle-divider">— — — — — —</div>
+        <p style="font-size:14px; color:#888; margin-top:12px;" id="nextTeamMsg">Pass to Team Rowley!</p>
+        <button class="btn btn-next btn-big mt16 pop-in" onclick="nextTurn()">Next Turn →</button>
+      </div>
+    </div>
+
+    <!-- ══════════════ FINAL SCREEN ══════════════ -->
+    <div class="screen" id="screen-final">
+
+      <!-- Versus final -->
+      <div id="finalVersus">
+        <div class="trophy-area pop-in">
+          <span class="trophy-emoji" id="winnerEmoji">🏆</span>
+          <div class="winner-name" id="winnerText">Team Heffley wins!</div>
+          <div class="winner-sub" id="winnerSub">Congratulations!</div>
+        </div>
+        <div class="final-scores">
+          <div class="final-score-box team-a">
+            <div class="team-name" id="finalNameA">Team A</div>
+            <div class="big-num" id="finalNumA">0</div>
+          </div>
+          <div class="final-score-box team-b">
+            <div class="team-name" id="finalNameB">Team B</div>
+            <div class="big-num" id="finalNumB">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Solo final -->
+      <div id="finalSolo" style="display:none; text-align:center; margin-bottom:12px;">
+        <div id="newRecordBadgeWrap"></div>
+        <div class="trophy-emoji" style="font-size:52px; display:block; margin-bottom:4px;">🎯</div>
+        <div class="winner-name" id="soloWinnerName">Greg</div>
+        <div class="solo-final-label">Final Score</div>
+        <div class="solo-final-score" id="soloFinalScore">0</div>
+        <div class="leaderboard" style="margin-top:14px; text-align:left;">
+          <div class="leaderboard-title">🏅 Best Scores</div>
+          <div id="lbFinalRows"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-play-again btn-big" onclick="resetGame()">🔄 Play Again</button>
+      <button class="btn btn-reset btn-big" onclick="showSetup()" style="margin-top:8px;">⚙ Change Settings</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── CARD DATA ───────────────────────────────────────────────
+const CARDS = {
+  animals: [
+    { word:'ELEPHANT', forbidden:['TRUNK','AFRICA','LARGE','GREY','ZOO'] },
+    { word:'PENGUIN', forbidden:['COLD','BLACK','ICE','FISH','BIRD'] },
+    { word:'DOLPHIN', forbidden:['OCEAN','SWIM','SMART','MAMMAL','JUMP'] },
+    { word:'GIRAFFE', forbidden:['NECK','TALL','AFRICA','SPOTS','LEAVES'] },
+    { word:'KANGAROO', forbidden:['POUCH','AUSTRALIA','HOP','JOEY','JUMP'] },
+    { word:'SHARK', forbidden:['TEETH','WATER','BITE','OCEAN','FIN'] },
+    { word:'PARROT', forbidden:['TALK','BIRD','COLORFUL','FEATHERS','MIMIC'] },
+    { word:'HAMSTER', forbidden:['WHEEL','CAGE','SMALL','FLUFFY','PET'] },
+    { word:'WOLF', forbidden:['HOWL','PACK','WILD','DOG','FOREST'] },
+    { word:'OCTOPUS', forbidden:['ARMS','INK','TENTACLES','OCEAN','EIGHT'] },
+  ],
+  food: [
+    { word:'SPAGHETTI', forbidden:['SAUCE','PASTA','NOODLES','ITALY','MEATBALL'] },
+    { word:'TACO', forbidden:['SHELL','CHEESE','MEXICO','SPICE','FOLD'] },
+    { word:'PIZZA', forbidden:['CHEESE','CRUST','SLICE','TOPPING','OVEN'] },
+    { word:'WAFFLE', forbidden:['SYRUP','BREAKFAST','SQUARE','CRISPY','BUTTER'] },
+    { word:'SUSHI', forbidden:['FISH','RICE','JAPAN','RAW','ROLL'] },
+    { word:'POPCORN', forbidden:['MOVIE','BUTTER','KERNEL','SALT','MICROWAVE'] },
+    { word:'CHOCOLATE', forbidden:['SWEET','BROWN','COCOA','CANDY','MELT'] },
+    { word:'BROCCOLI', forbidden:['GREEN','VEGETABLE','TREE','HEALTHY','STEAM'] },
+    { word:'MILKSHAKE', forbidden:['ICE CREAM','BLEND','STRAW','COLD','THICK'] },
+    { word:'NACHOS', forbidden:['CHIPS','CHEESE','SALSA','CRISPY','SNACK'] },
+  ],
+  school: [
+    { word:'HOMEWORK', forbidden:['ASSIGNMENT','STUDY','DUE','CLASS','TEACHER'] },
+    { word:'DETENTION', forbidden:['PUNISHMENT','SCHOOL','AFTER','TROUBLE','ROOM'] },
+    { word:'PRINCIPAL', forbidden:['OFFICE','SCHOOL','BOSS','RULE','TROUBLE'] },
+    { word:'CAFETERIA', forbidden:['LUNCH','FOOD','SCHOOL','TABLE','LINE'] },
+    { word:'LOCKER', forbidden:['SCHOOL','COMBINATION','HALL','SPIN','DOOR'] },
+    { word:'RECESS', forbidden:['PLAYGROUND','BREAK','OUTSIDE','PLAY','SCHOOL'] },
+    { word:'SUBSTITUTE', forbidden:['TEACHER','FILL','CLASS','TEMPORARY','LESSON'] },
+    { word:'TEXTBOOK', forbidden:['READ','SCHOOL','SUBJECT','HEAVY','STUDY'] },
+    { word:'HALLWAY', forbidden:['SCHOOL','CORRIDOR','WALK','PASS','BETWEEN'] },
+    { word:'REPORT CARD', forbidden:['GRADES','SCHOOL','PARENT','LETTER','MARKS'] },
+  ],
+  everyday: [
+    { word:'BIRTHDAY CAKE', forbidden:['CANDLE','PARTY','SWEET','WISH','CELEBRATE'] },
+    { word:'ALARM CLOCK', forbidden:['MORNING','WAKE','BEEP','SNOOZE','TIME'] },
+    { word:'BACKPACK', forbidden:['SCHOOL','CARRY','STRAP','BAG','HEAVY'] },
+    { word:'SUNSCREEN', forbidden:['SUN','PROTECT','LOTION','BEACH','BURN'] },
+    { word:'ELEVATOR', forbidden:['FLOOR','BUTTON','LIFT','UP','DOOR'] },
+    { word:'TRAMPOLINE', forbidden:['JUMP','BOUNCE','YARD','SPRING','FUN'] },
+    { word:'SNOWFLAKE', forbidden:['COLD','WINTER','ICE','WHITE','MELT'] },
+    { word:'TOOTHBRUSH', forbidden:['TEETH','BRUSH','BATHROOM','PASTE','CLEAN'] },
+    { word:'SWIMMING POOL', forbidden:['WATER','SWIM','DEEP','SPLASH','CHLORINE'] },
+    { word:'TREEHOUSE', forbidden:['TREE','WOOD','CLIMB','HIGH','KIDS'] },
+    { word:'SLEEPING BAG', forbidden:['CAMP','SLEEP','ZIP','OUTDOOR','WARM'] },
+    { word:'ROLLER SKATES', forbidden:['WHEELS','ROLL','SKATE','BALANCE','FAST'] },
+  ],
+};
+
+// Build "all" category
+CARDS.all = [...CARDS.animals, ...CARDS.food, ...CARDS.school, ...CARDS.everyday];
+
+// ─── GAME STATE ──────────────────────────────────────────────
+let G = {};
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  const solo = document.querySelector('input[name=gameMode]:checked').value === 'solo';
+  G = {
+    soloMode: solo,
+    teamNames: solo
+      ? [ document.getElementById('soloPlayerName').value.trim() || 'Player' ]
+      : [
+          document.getElementById('teamAName').value.trim() || 'Team A',
+          document.getElementById('teamBName').value.trim() || 'Team B',
+        ],
+    scores: solo ? [0] : [0, 0],
+    turnDuration: parseInt(document.getElementById('turnDuration').value),
+    totalRounds: parseInt(document.getElementById('totalRounds').value),
+    category: document.getElementById('category').value,
+    currentTeam: 0,
+    currentRound: 1,
+    deck: [],
+    cardIndex: 0,
+    timer: null,
+    timeLeft: 0,
+    turnCorrect: 0,
+    turnSkipped: 0,
+    turnBuzzed: 0,
+    halfRound: 0,
+  };
+
+  G.deck = shuffle(CARDS[G.category]);
+
+  soundStart();
+  showScreen('screen-play');
+  setupPlayScreen();
+  startTurn();
+}
+
+function setupPlayScreen() {
+  if (G.soloMode) {
+    document.getElementById('scoreboard').style.display = 'none';
+    document.getElementById('soloScoreWrap').style.display = 'block';
+  } else {
+    document.getElementById('scoreboard').style.display = '';
+    document.getElementById('soloScoreWrap').style.display = 'none';
+    document.getElementById('scoreNameA').textContent = G.teamNames[0];
+    document.getElementById('scoreNameB').textContent = G.teamNames[1];
+    document.getElementById('finalNameA').textContent = G.teamNames[0];
+    document.getElementById('finalNameB').textContent = G.teamNames[1];
+  }
+}
+
+function startTurn() {
+  G.timeLeft = G.turnDuration;
+  G.turnCorrect = 0;
+  G.turnSkipped = 0;
+  G.turnBuzzed = 0;
+
+  updateScoreboard();
+  updateRoundInfo();
+  loadCard();
+  startTimer();
+}
+
+function loadCard() {
+  if (G.cardIndex >= G.deck.length) {
+    G.deck = shuffle(CARDS[G.category]);
+    G.cardIndex = 0;
+  }
+  const card = G.deck[G.cardIndex];
+  document.getElementById('secretWord').textContent = card.word;
+
+  const fw = document.getElementById('forbiddenWords');
+  fw.innerHTML = '';
+  card.forbidden.forEach(w => {
+    const chip = document.createElement('span');
+    chip.className = 'forbidden-chip';
+    chip.textContent = w;
+    fw.appendChild(chip);
+  });
+
+  // Animate card
+  const wc = document.getElementById('wordCard');
+  wc.classList.remove('card-flip');
+  void wc.offsetWidth;
+  wc.classList.add('card-flip');
+
+  updateCardsLeft();
+}
+
+function updateCardsLeft() {
+  const remaining = G.deck.length - G.cardIndex;
+  document.getElementById('cardsLeft').textContent =
+    `Card ${G.cardIndex + 1} of ${G.deck.length}`;
+}
+
+function markCorrect() {
+  G.scores[G.currentTeam]++;
+  G.turnCorrect++;
+  G.cardIndex++;
+  soundCorrect();
+  flashCard('correct-flash');
+  updateScoreboard();
+  loadCard();
+}
+
+function skipCard() {
+  G.turnSkipped++;
+  G.cardIndex++;
+  soundSkip();
+  flashCard('skip-flash');
+  loadCard();
+}
+
+function triggerBuzzer() {
+  clearInterval(G.timer);
+  soundBuzzer();
+  const card = G.deck[G.cardIndex];
+  document.getElementById('buzzMsg').textContent =
+    `"${card.word}" — deduct 1 point from ${G.teamNames[G.currentTeam]}`;
+  document.getElementById('buzzOverlay').classList.add('show');
+}
+
+function dismissBuzz() {
+  G.scores[G.currentTeam] = Math.max(0, G.scores[G.currentTeam] - 1);
+  G.turnBuzzed++;
+  G.cardIndex++;
+  document.getElementById('buzzOverlay').classList.remove('show');
+  updateScoreboard();
+  loadCard();
+  startTimer(); // Resume timer
+}
+
+function flashCard(cls) {
+  const wc = document.getElementById('wordCard');
+  wc.classList.add(cls);
+  setTimeout(() => wc.classList.remove(cls), 400);
+}
+
+// ─── TIMER ───────────────────────────────────────────────────
+function startTimer() {
+  clearInterval(G.timer);
+  renderTimer();
+  G.timer = setInterval(() => {
+    G.timeLeft--;
+    renderTimer();
+    if (G.timeLeft <= 0) {
+      clearInterval(G.timer);
+      soundTimeUp();
+      endTurn();
+    } else if (G.timeLeft <= 10) {
+      soundTick();
+    }
+  }, 1000);
+}
+
+function renderTimer() {
+  const pct = G.timeLeft / G.turnDuration;
+  const circ = 2 * Math.PI * 26; // r=26
+  const offset = circ * (1 - pct);
+  const arc = document.getElementById('timerArc');
+  arc.style.strokeDashoffset = offset;
+
+  // Color shift
+  if (pct > 0.5) arc.style.stroke = '#4caf7d';
+  else if (pct > 0.25) arc.style.stroke = '#ffd447';
+  else arc.style.stroke = '#e05c5c';
+
+  document.getElementById('timerNum').textContent = G.timeLeft;
+}
+
+function endTurn() {
+  showTurnResult();
+}
+
+function showTurnResult() {
+  if (G.soloMode) {
+    document.getElementById('turnResultTeam').textContent =
+      `Turn ${G.currentRound} of ${G.totalRounds} done`;
+  } else {
+    document.getElementById('turnResultTeam').textContent =
+      `${G.teamNames[G.currentTeam]}'s turn is over`;
+  }
+  document.getElementById('trCorrect').textContent = G.turnCorrect;
+  document.getElementById('trSkipped').textContent = G.turnSkipped;
+  document.getElementById('trBuzzed').textContent = G.turnBuzzed;
+
+  if (G.soloMode) {
+    const isLast = G.currentRound >= G.totalRounds;
+    document.getElementById('nextTeamMsg').textContent = isLast
+      ? "That's the last turn!" : `Score so far: ${G.scores[0]}`;
+    document.getElementById('nextTeamMsg').style.color = isLast ? '#e05c5c' : '#888';
+  } else {
+    const nextTeam = 1 - G.currentTeam;
+    const isLastTurn = (G.currentTeam === 1 && G.currentRound >= G.totalRounds);
+    if (isLastTurn) {
+      document.getElementById('nextTeamMsg').textContent = "That's the last turn!";
+      document.getElementById('nextTeamMsg').style.color = '#e05c5c';
+    } else {
+      document.getElementById('nextTeamMsg').textContent =
+        `Hand the device to ${G.teamNames[nextTeam]}!`;
+      document.getElementById('nextTeamMsg').style.color = '#888';
+    }
+  }
+
+  showScreen('screen-turnresult');
+}
+
+function nextTurn() {
+  if (G.soloMode) {
+    G.currentRound++;
+    if (G.currentRound > G.totalRounds) {
+      showFinal();
+      return;
+    }
+    showScreen('screen-play');
+    startTurn();
+    return;
+  }
+
+  const nextTeam = 1 - G.currentTeam;
+  if (G.currentTeam === 1) {
+    G.currentRound++;
+    if (G.currentRound > G.totalRounds) {
+      showFinal();
+      return;
+    }
+  }
+  G.currentTeam = nextTeam;
+  showScreen('screen-play');
+  startTurn();
+}
+
+// ─── SCOREBOARD ──────────────────────────────────────────────
+function updateScoreboard() {
+  if (G.soloMode) {
+    document.getElementById('soloScoreNum').textContent = G.scores[0];
+    return;
+  }
+  document.getElementById('scoreNumA').textContent = G.scores[0];
+  document.getElementById('scoreNumB').textContent = G.scores[1];
+  document.getElementById('scoreCardA').classList.toggle('active-turn', G.currentTeam === 0);
+  document.getElementById('scoreCardB').classList.toggle('active-turn', G.currentTeam === 1);
+}
+
+function updateRoundInfo() {
+  if (G.soloMode) {
+    document.getElementById('roundInfo').textContent =
+      `Turn ${G.currentRound} of ${G.totalRounds}`;
+  } else {
+    document.getElementById('roundInfo').textContent =
+      `Round ${G.currentRound} of ${G.totalRounds} — ${G.teamNames[G.currentTeam]}'s turn`;
+  }
+}
+
+// ─── FINAL SCREEN ────────────────────────────────────────────
+function showFinal() {
+  soundWin();
+
+  if (G.soloMode) {
+    document.getElementById('finalVersus').style.display = 'none';
+    document.getElementById('finalSolo').style.display = 'block';
+
+    const score = G.scores[0];
+    document.getElementById('soloWinnerName').textContent = G.teamNames[0];
+    document.getElementById('soloFinalScore').textContent = score;
+
+    const isRecord = lbSaveScore(G.teamNames[0], score);
+    const badge = document.getElementById('newRecordBadgeWrap');
+    badge.innerHTML = isRecord
+      ? '<div class="new-record-badge">🌟 New Record!</div>' : '';
+
+    renderLeaderboard('lbFinalRows');
+  } else {
+    document.getElementById('finalVersus').style.display = '';
+    document.getElementById('finalSolo').style.display = 'none';
+
+    document.getElementById('finalNumA').textContent = G.scores[0];
+    document.getElementById('finalNumB').textContent = G.scores[1];
+
+    let emoji = '🏆', winText = '', sub = '';
+    if (G.scores[0] > G.scores[1]) {
+      winText = `${G.teamNames[0]} wins!`;
+      sub = `${G.scores[0]} to ${G.scores[1]}`;
+    } else if (G.scores[1] > G.scores[0]) {
+      winText = `${G.teamNames[1]} wins!`;
+      sub = `${G.scores[1]} to ${G.scores[0]}`;
+    } else {
+      winText = "It's a tie!";
+      sub = `Both teams scored ${G.scores[0]}`;
+      emoji = '🤝';
+    }
+    document.getElementById('winnerEmoji').textContent = emoji;
+    document.getElementById('winnerText').textContent = winText;
+    document.getElementById('winnerSub').textContent = sub;
+  }
+
+  showScreen('screen-final');
+}
+
+function resetGame() { showSetup(); }
+function showSetup() {
+  showScreen('screen-setup');
+  updateModeUI();
+}
+
+// ─── MODE TOGGLE ─────────────────────────────────────────────
+function updateModeUI() {
+  const solo = document.querySelector('input[name=gameMode]:checked').value === 'solo';
+  document.getElementById('teamInputsVersus').style.display = solo ? 'none' : '';
+  document.getElementById('teamInputsSolo').style.display  = solo ? '' : 'none';
+  document.getElementById('roundsLabel').textContent = solo ? '🔄 Turns' : '🔄 Rounds';
+  document.getElementById('setupNote').textContent = solo
+    ? '1 player · beat your own record!'
+    : '2 teams · pass the device between turns';
+  document.getElementById('setupLeaderboard').style.display = solo ? '' : 'none';
+  if (solo) renderLeaderboard('lbSetupRows');
+}
+
+// ─── LEADERBOARD (localStorage) ──────────────────────────────
+const LB_KEY = 'mmph_leaderboard_v1';
+
+function lbGet() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function lbSaveScore(name, score) {
+  const lb = lbGet();
+  const prevBest = lb.length ? lb[0].score : -1;
+  lb.push({ name: name, score: score, date: new Date().toLocaleDateString() });
+  lb.sort(function(a, b) { return b.score - a.score; });
+  lb.splice(10);
+  localStorage.setItem(LB_KEY, JSON.stringify(lb));
+  return score > prevBest;
+}
+
+function renderLeaderboard(containerId) {
+  const lb = lbGet();
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!lb.length) {
+    el.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>';
+    return;
+  }
+  const rankCls = ['gold', 'silver', 'bronze'];
+  el.innerHTML = lb.slice(0, 7).map(function(e, i) {
+    return '<div class="lb-row">'
+      + '<span class="lb-rank ' + (rankCls[i] || '') + '">' + (i + 1) + '</span>'
+      + '<span class="lb-name">' + escHtml(e.name) + '</span>'
+      + '<span class="lb-score">' + e.score + '</span>'
+      + '<span class="lb-date">' + e.date + '</span>'
+      + '</div>';
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ─── AUDIO ───────────────────────────────────────────────────
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, type, duration, gain, delay) {
+  gain = gain || 0.4;
+  delay = delay || 0;
+  const ctx = getAudioCtx();
+  const t = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.start(t);
+  osc.stop(t + duration + 0.01);
+}
+
+function soundCorrect() {
+  playTone(523, 'sine', 0.12, 0.45, 0);
+  playTone(659, 'sine', 0.12, 0.45, 0.1);
+  playTone(784, 'sine', 0.25, 0.45, 0.2);
+}
+
+function soundSkip() {
+  const ctx = getAudioCtx();
+  const t = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(440, t);
+  osc.frequency.exponentialRampToValueAtTime(220, t + 0.2);
+  g.gain.setValueAtTime(0.3, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  osc.start(t);
+  osc.stop(t + 0.23);
+}
+
+function soundBuzzer() {
+  const ctx = getAudioCtx();
+  for (let i = 0; i < 2; i++) {
+    const t = ctx.currentTime + i * 0.18;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180 - i * 20, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.5);
+    g.gain.setValueAtTime(0.55, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.start(t);
+    osc.stop(t + 0.56);
+  }
+}
+
+function soundTick() {
+  playTone(900, 'square', 0.04, 0.18, 0);
+}
+
+function soundTimeUp() {
+  for (let i = 0; i < 4; i++) {
+    playTone(880, 'square', 0.14, 0.4, i * 0.22);
+  }
+}
+
+function soundStart() {
+  [392, 523, 659, 784].forEach(function(f, i) {
+    playTone(f, 'sine', 0.15, 0.4, i * 0.12);
+  });
+  playTone(784, 'sine', 0.4, 0.5, 0.5);
+}
+
+function soundWin() {
+  [523, 659, 784, 1047].forEach(function(f, i) {
+    playTone(f, 'sine', 0.18, 0.45, i * 0.1);
+  });
+  playTone(1047, 'sine', 0.6, 0.5, 0.45);
+}
+</script>
+</body>
+</html>
