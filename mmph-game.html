@@ -1982,15 +1982,22 @@ function buildRecognition() {
   r.maxAlternatives = 1;
 
   r.onresult = function(e) {
-    if (!micActive) return;
-    if (document.getElementById('buzzOverlay').classList.contains('show')) return;
-    if (!G.deck || G.cardIndex >= G.deck.length) return;
+    if (!micEnabled) return;
 
     let transcript = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       transcript += e.results[i][0].transcript;
     }
     transcript = ' ' + transcript.toUpperCase().replace(/[^A-Z\s]/g, '') + ' ';
+
+    // Buzz overlay showing → only listen for "continue"
+    if (document.getElementById('buzzOverlay').classList.contains('show')) {
+      if (/\bCONTINUE\b/.test(transcript)) dismissBuzz();
+      return;
+    }
+
+    if (!micActive) return;
+    if (!G.deck || G.cardIndex >= G.deck.length) return;
 
     const card = G.deck[G.cardIndex];
 
