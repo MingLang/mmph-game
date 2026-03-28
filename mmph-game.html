@@ -1993,11 +1993,29 @@ function buildRecognition() {
     transcript = ' ' + transcript.toUpperCase().replace(/[^A-Z\s]/g, '') + ' ';
 
     const card = G.deck[G.cardIndex];
-    const targets = [card.word, ...card.forbidden];
-    for (const w of targets) {
+
+    // "Skip" → skip card
+    if (/\bSKIP\b/.test(transcript)) {
+      micActive = false;
+      skipCard();
+      micActive = true;
+      return;
+    }
+
+    // Secret word heard by guesser → mark correct
+    const secretEscaped = card.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    if (new RegExp('\\b' + secretEscaped + '\\b').test(transcript)) {
+      micActive = false;
+      markCorrect();
+      micActive = true;
+      return;
+    }
+
+    // Forbidden words → buzz
+    for (const w of card.forbidden) {
       const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
       if (new RegExp('\\b' + escaped + '\\b').test(transcript)) {
-        micActive = false; // pause to prevent double-fire
+        micActive = false;
         triggerBuzzer(w);
         return;
       }
